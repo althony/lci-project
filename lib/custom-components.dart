@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_facebook_login/flutter_facebook_login.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -43,7 +44,10 @@ class InputBox extends StatelessWidget {
         borderRadius: bRadius,
         border: Border.all(color: Colors.transparent),
         boxShadow: [
-          BoxShadow(color: (focusNode.hasFocus ? Color(0xFFB9B9B9) : Colors.transparent), blurRadius: (focusNode.hasFocus ? 3 : 0)),
+          BoxShadow(
+              color:
+                  (focusNode.hasFocus ? Color(0xFFB9B9B9) : Colors.transparent),
+              blurRadius: (focusNode.hasFocus ? 3 : 0)),
         ],
       ),
       child: TextField(
@@ -58,7 +62,9 @@ class InputBox extends StatelessWidget {
         enabled: !readOnly,
         enableInteractiveSelection: !readOnly,
         textCapitalization: TextCapitalization.sentences,
-        onEditingComplete: () => (focusNodeNext != null ? FocusScope.of(context).requestFocus(focusNodeNext) : FocusScope.of(context).unfocus()),
+        onEditingComplete: () => (focusNodeNext != null
+            ? FocusScope.of(context).requestFocus(focusNodeNext)
+            : FocusScope.of(context).unfocus()),
         style: TextStyle(
           fontSize: 18,
         ),
@@ -99,7 +105,8 @@ class PasswordBox extends StatefulWidget {
   });
 
   @override
-  _PasswordBoxState createState() => _PasswordBoxState(focusNode, focusNodeNext, controller);
+  _PasswordBoxState createState() =>
+      _PasswordBoxState(focusNode, focusNodeNext, controller);
 }
 
 class _PasswordBoxState extends State<PasswordBox> {
@@ -116,7 +123,10 @@ class _PasswordBoxState extends State<PasswordBox> {
         borderRadius: BorderRadius.all(Radius.circular(90)),
         border: Border.all(color: Colors.transparent),
         boxShadow: [
-          BoxShadow(color: (focusNode.hasFocus ? Color(0xFFB9B9B9) : Colors.transparent), blurRadius: (focusNode.hasFocus ? 3 : 0)),
+          BoxShadow(
+              color:
+                  (focusNode.hasFocus ? Color(0xFFB9B9B9) : Colors.transparent),
+              blurRadius: (focusNode.hasFocus ? 3 : 0)),
         ],
       ),
       child: TextField(
@@ -126,9 +136,12 @@ class _PasswordBoxState extends State<PasswordBox> {
           fontSize: 18,
         ),
         obscureText: passwordVisible,
-        onEditingComplete: () => (focusNodeNext != null ? FocusScope.of(context).requestFocus(focusNodeNext) : FocusScope.of(context).unfocus()),
+        onEditingComplete: () => (focusNodeNext != null
+            ? FocusScope.of(context).requestFocus(focusNodeNext)
+            : FocusScope.of(context).unfocus()),
         decoration: InputDecoration(
-          contentPadding: EdgeInsets.only(left: 20, top: 0, right: 20, bottom: 0),
+          contentPadding:
+              EdgeInsets.only(left: 20, top: 0, right: 20, bottom: 0),
           fillColor: Color(0xFFF2F2F2),
           filled: true,
           hintStyle: TextStyle(
@@ -167,14 +180,16 @@ class GoogleSignInButton extends StatelessWidget {
 
   Future<String> signInWithGoogle() async {
     final GoogleSignInAccount googleSignInAccount = await googleSignIn.signIn();
-    final GoogleSignInAuthentication googleSignInAuthentication = await googleSignInAccount.authentication;
+    final GoogleSignInAuthentication googleSignInAuthentication =
+        await googleSignInAccount.authentication;
 
     final AuthCredential credential = GoogleAuthProvider.credential(
       accessToken: googleSignInAuthentication.accessToken,
       idToken: googleSignInAuthentication.idToken,
     );
 
-    final UserCredential authResult = await _auth.signInWithCredential(credential);
+    final UserCredential authResult =
+        await _auth.signInWithCredential(credential);
     final User user = authResult.user;
 
     if (user != null) {
@@ -203,7 +218,11 @@ class GoogleSignInButton extends StatelessWidget {
         padding: EdgeInsets.only(top: 11.0, bottom: 11.0),
         onPressed: () async {
           await signInWithGoogle().then((result) => {
-                if (result != null) {Navigator.pushReplacement(build, MaterialPageRoute(builder: (build) => Home()))}
+                if (result != null)
+                  {
+                    Navigator.pushReplacement(
+                        build, MaterialPageRoute(builder: (build) => Home()))
+                  }
               });
         },
         child: Row(
@@ -230,7 +249,72 @@ class GoogleSignInButton extends StatelessWidget {
   }
 }
 
-class FacebookSignInButton extends StatelessWidget {
+class FacebookSignInButton extends StatefulWidget {
+  static final FacebookLogin facebookSignIn = new FacebookLogin();
+
+  @override
+  _FacebookSignInButtonState createState() => _FacebookSignInButtonState();
+}
+
+class _FacebookSignInButtonState extends State<FacebookSignInButton> {
+  FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<Null> _login(BuildContext build) async {
+    print('logging in');
+    final FacebookLoginResult result =
+        await FacebookSignInButton.facebookSignIn.logIn(['email']);
+
+    switch (result.status) {
+      case FacebookLoginStatus.loggedIn:
+        final FacebookAccessToken accessToken = result.accessToken;
+        print('''
+         Logged in!
+
+         Token: ${accessToken.token}
+         User id: ${accessToken.userId}
+         Expires: ${accessToken.expires}
+         Permissions: ${accessToken.permissions}
+         Declined permissions: ${accessToken.declinedPermissions}
+         ''');
+
+        try {
+          await loginWithfacebook(result, build);
+          print('logged in success!');
+          // Navigator.pushReplacement(
+          //     build, MaterialPageRoute(builder: (context) => GetUserData()));
+
+        } catch (e) {
+          print(e);
+        }
+        break;
+      case FacebookLoginStatus.cancelledByUser:
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Login cancelled by the user.'),
+        ));
+        break;
+      case FacebookLoginStatus.error:
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Something went wrong with the login process.\n'
+              'Here\'s the error Facebook gave us: ${result.errorMessage}'),
+        ));
+        break;
+    }
+  }
+
+  Future loginWithfacebook(FacebookLoginResult result, context) async {
+    final FacebookAccessToken accessToken = result.accessToken;
+    AuthCredential credential =
+        FacebookAuthProvider.credential(accessToken.token);
+    var a = await _auth.signInWithCredential(credential);
+    if (a.user != null) {
+      // Navigator.pushReplacement(
+      //     context, MaterialPageRoute(builder: (context) => GetUserData()));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("logged in success!"),
+      ));
+    }
+  }
+
   Widget build(BuildContext build) {
     return Material(
       shape: RoundedRectangleBorder(
@@ -242,7 +326,9 @@ class FacebookSignInButton extends StatelessWidget {
       child: MaterialButton(
         elevation: 3,
         padding: EdgeInsets.only(top: 11.0, bottom: 11.0),
-        onPressed: () {},
+        onPressed: () async {
+          await _login(build);
+        },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -254,7 +340,7 @@ class FacebookSignInButton extends StatelessWidget {
               ),
             ),
             Text(
-              'Continue with Facebook',
+              'Sign in with Facebook',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.white,
@@ -273,7 +359,11 @@ class PrimaryButton extends StatelessWidget {
   final Color textColor;
   final Function onClickFunction;
 
-  PrimaryButton({this.onClickFunction, this.text = "Sample Text", this.color = Colors.white, this.textColor = Colors.black});
+  PrimaryButton(
+      {this.onClickFunction,
+      this.text = "Sample Text",
+      this.color = Colors.white,
+      this.textColor = Colors.black});
 
   @override
   Widget build(BuildContext context) {
@@ -375,7 +465,9 @@ class PageHeadings extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: metaText.isNotEmpty ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      crossAxisAlignment: metaText.isNotEmpty
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
       children: [
         popAvailable
             ? GestureDetector(
@@ -393,7 +485,9 @@ class PageHeadings extends StatelessWidget {
               )
             : SizedBox.shrink(),
         Container(
-          margin: popAvailable && metaText.isNotEmpty ? EdgeInsets.only(top: 20) : EdgeInsets.zero,
+          margin: popAvailable && metaText.isNotEmpty
+              ? EdgeInsets.only(top: 20)
+              : EdgeInsets.zero,
           width: MediaQuery.of(context).size.width - 66.5,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -493,7 +587,8 @@ class MultiColorProgressBar extends StatelessWidget {
   final Color colorOne;
   final Color colorTwo;
 
-  MultiColorProgressBar(this.valueOne, this.valueTwo, this.colorOne, this.colorTwo);
+  MultiColorProgressBar(
+      this.valueOne, this.valueTwo, this.colorOne, this.colorTwo);
 
   @override
   Widget build(BuildContext context) {
@@ -556,8 +651,10 @@ class UnlockPremium extends StatelessWidget {
             height: 60,
             decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(width: 1, style: BorderStyle.solid, color: Colors.white),
-                bottom: BorderSide(width: 1, style: BorderStyle.solid, color: Colors.white),
+                top: BorderSide(
+                    width: 1, style: BorderStyle.solid, color: Colors.white),
+                bottom: BorderSide(
+                    width: 1, style: BorderStyle.solid, color: Colors.white),
               ),
               gradient: LinearGradient(
                 begin: Alignment(0.91, -1.29),
@@ -600,9 +697,16 @@ class GoalSelection extends StatefulWidget {
   final String assetPath;
   final Function(bool) callBack;
 
-  const GoalSelection({this.title, this.description, this.color, this.value, this.assetPath, this.callBack});
+  const GoalSelection(
+      {this.title,
+      this.description,
+      this.color,
+      this.value,
+      this.assetPath,
+      this.callBack});
 
-  _GoalSelectionState createState() => _GoalSelectionState(title, description, color, value, assetPath, callBack);
+  _GoalSelectionState createState() => _GoalSelectionState(
+      title, description, color, value, assetPath, callBack);
 }
 
 class _GoalSelectionState extends State<GoalSelection> {
@@ -613,7 +717,8 @@ class _GoalSelectionState extends State<GoalSelection> {
   Function(bool) callBack;
   bool value;
 
-  _GoalSelectionState(this.title, this.description, this.color, this.value, this.assetPath, this.callBack);
+  _GoalSelectionState(this.title, this.description, this.color, this.value,
+      this.assetPath, this.callBack);
 
   @override
   Widget build(BuildContext context) {
